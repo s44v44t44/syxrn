@@ -234,8 +234,7 @@ def display_table(df: pd.DataFrame, kind: str = "generic", max_rows: int | None 
         order = [
             "display_rank", "issue_display_name", "summary_display", "자료원", "기간 유형",
             "window_start", "window_end", "active_days", "doc_count_weighted", "comment_count",
-            "comment_count_weighted", "view_count", "view_count_weighted", "like_count", "like_count_weighted",
-            "top_terms",
+            "comment_count_weighted", "view_count", "view_count_weighted",
         ]
     elif kind == "timeline":
         order = ["date", "자료원", "doc_count", "doc_count_weighted", "comment_count", "view_count", "like_count"]

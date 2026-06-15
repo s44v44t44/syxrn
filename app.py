@@ -434,6 +434,22 @@ def first_evidence_title(row: pd.Series) -> str:
     return ""
 
 
+def evidence_title_list(row: pd.Series, limit: int = 6) -> list[str]:
+    titles: list[str] = []
+    for col in ["evidence_titles", "representative_title"]:
+        value = display_text(row.get(col, ""))
+        if not value:
+            continue
+        for part in re.split(r"\s*(?:\|\||\n)\s*", value):
+            title = re.sub(r"\s+", " ", part).strip(" |")
+            if not title or title in titles:
+                continue
+            titles.append(title)
+            if len(titles) >= limit:
+                return titles
+    return titles
+
+
 def weak_summary(value) -> bool:
     text = display_text(value)
     return not text or any(marker in text for marker in WEAK_SUMMARY_MARKERS)
@@ -598,8 +614,16 @@ def issue_card(row: pd.Series, rank: int, *, heading: str = "선택 이슈 상�
         if representative_url.startswith("http"):
             st.markdown(f"[대표 근거 열기]({representative_url})")
         with st.expander("핵심어·근거 보기"):
-            st.write("핵심어:", row.get("top_terms", ""))
-            st.write("근거 제목:", row.get("evidence_titles", ""))
+            terms = normalized_issue_terms(row.get("top_terms", ""), limit=10)
+            if terms:
+                st.markdown("**핵심어**")
+                st.write(" · ".join(terms))
+            titles = evidence_title_list(row, limit=6)
+            if titles:
+                st.markdown("**근거 제목**")
+                st.dataframe(pd.DataFrame({"근거 제목": titles}), width="stretch", hide_index=True)
+            if not terms and not titles:
+                st.caption("표시할 핵심어·근거 제목이 없습니다.")
 
 
 def evidence_metrics(evidence_df: pd.DataFrame):
