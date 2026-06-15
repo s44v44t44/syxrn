@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 
 import pandas as pd
+import pyarrow.parquet as pq
 import streamlit as st
 
 from src.data_loader import load_metadata, load_table, coerce_numeric
@@ -64,17 +65,204 @@ NUMERIC_COLS = [
     "reply_count", "unique_author_hash_count",
 ]
 
+BRIEF_INDEX_COLS = ["candidate", "source", "window_type", "window_start", "window_end"]
+BRIEF_VIEW_COLS = [
+    "period_issue_id", "stable_issue_id", "candidate", "source", "window_type", "window_start", "window_end",
+    "rank_in_window", "issue_name", "issue_type", "summary_1line", "representative_title",
+    "representative_url", "top_terms", "doc_count_raw", "doc_count_weighted", "comment_count",
+    "view_count", "like_count", "rank_score", "cluster_coherence", "issue_display_name",
+    "summary_display", "issue_label_auto", "doc_count",
+]
+TIMESERIES_VIEW_COLS = [
+    "date", "candidate", "source", "stable_issue_id", "issue_name", "issue_display_name",
+    "summary_display", "representative_title", "issue_type", "summary_1line", "top_terms",
+    "review_status", "report_use_level", "dashboard_quality_flags", "dashboard_quality_tier",
+    "doc_count_weighted", "comment_count_weighted", "view_count_weighted", "like_count_weighted",
+    "search_text",
+]
+EVIDENCE_VIEW_COLS = [
+    "period_issue_id", "stable_issue_id", "candidate", "source", "date", "doc_id", "title", "url",
+    "publisher_or_channel", "comment_count", "view_count", "like_count", "count_for_ranking",
+]
+BASE_VIEW_COLS = [
+    "candidate", "source", "date", "doc_id", "title", "search_text", "count_for_ranking",
+    "comment_count", "view_count", "like_count",
+]
+
+
+@st.cache_data(show_spinner=False)
+def available_table_columns(data_dir: str, stem: str) -> tuple[str, ...]:
+    d = Path(data_dir)
+    pq_path = d / f"{stem}.parquet"
+    csv_path = d / f"{stem}.csv"
+    if pq_path.exists():
+        return tuple(pq.read_schema(pq_path).names)
+    if csv_path.exists():
+        return tuple(pd.read_csv(csv_path, nrows=0, encoding="utf-8-sig").columns)
+    return tuple()
+
+
+def read_table_subset(data_dir: str, stem: str, columns: list[str], filters=None) -> pd.DataFrame:
+    d = Path(data_dir)
+    available = set(available_table_columns(data_dir, stem))
+    keep = [c for c in columns if c in available]
+    if not keep:
+        return pd.DataFrame()
+    pq_path = d / f"{stem}.parquet"
+    csv_path = d / f"{stem}.csv"
+    if pq_path.exists():
+        return pd.read_parquet(pq_path, columns=keep, filters=filters)
+    if csv_path.exists():
+        df = pd.read_csv(csv_path, usecols=keep, dtype="object", low_memory=False, encoding="utf-8-sig")
+        return df
+    return pd.DataFrame()
+
+
+def add_filter(filters: list[tuple], available: set[str], column: str, op: str, value) -> None:
+    if column in available and value not in (None, "", [], ()):
+        filters.append((column, op, value))
+
+
+def add_in_filter(filters: list[tuple], available: set[str], column: str, values: tuple[str, ...]) -> None:
+    if column not in available or not values:
+        return
+    if len(values) == 1:
+        filters.append((column, "==", values[0]))
+    else:
+        filters.append((column, "in", list(values)))
+
 
 @st.cache_data(show_spinner="기본 분석 데이터를 불러오는 중...")
 def load_dashboard_index_data(data_dir: str):
     meta = load_metadata(data_dir)
-    briefs = load_table(data_dir, "issue_briefs")
+    briefs = read_table_subset(data_dir, "issue_briefs", BRIEF_INDEX_COLS)
     return meta, coerce_numeric(briefs, NUMERIC_COLS)
 
 
 @st.cache_data(show_spinner="선택한 분석 데이터를 불러오는 중...")
 def load_dashboard_table(data_dir: str, stem: str):
     return coerce_numeric(load_table(data_dir, stem), NUMERIC_COLS)
+
+
+@st.cache_data(show_spinner="선택한 기간 이슈를 불러오는 중...")
+def load_issue_briefs_view(
+    data_dir: str,
+    candidate: str,
+    sources: tuple[str, ...],
+    window_types: tuple[str, ...],
+    start_date_key: str,
+    end_date_key: str,
+    keyword: str,
+):
+    if not sources or not window_types:
+        return pd.DataFrame()
+    available = set(available_table_columns(data_dir, "issue_briefs"))
+    filters: list[tuple] = []
+    add_filter(filters, available, "candidate", "==", candidate)
+    add_in_filter(filters, available, "source", sources)
+    add_in_filter(filters, available, "window_type", window_types)
+    add_filter(filters, available, "window_end", ">=", start_date_key)
+    add_filter(filters, available, "window_start", "<=", end_date_key)
+    cols = list(BRIEF_VIEW_COLS)
+    if keyword.strip():
+        cols.append("search_text")
+    df = read_table_subset(data_dir, "issue_briefs", cols, filters=filters)
+    return coerce_numeric(df, NUMERIC_COLS)
+
+
+@st.cache_data(show_spinner="선택 기간 시계열을 불러오는 중...")
+def load_issue_timeseries_view(
+    data_dir: str,
+    candidate: str,
+    sources: tuple[str, ...],
+    start_date_key: str,
+    end_date_key: str,
+):
+    if not sources:
+        return pd.DataFrame()
+    available = set(available_table_columns(data_dir, "issue_timeseries"))
+    filters: list[tuple] = []
+    add_filter(filters, available, "candidate", "==", candidate)
+    add_in_filter(filters, available, "source", sources)
+    add_filter(filters, available, "date", ">=", start_date_key)
+    add_filter(filters, available, "date", "<=", end_date_key)
+    df = read_table_subset(data_dir, "issue_timeseries", TIMESERIES_VIEW_COLS, filters=filters)
+    return coerce_numeric(df, NUMERIC_COLS)
+
+
+@st.cache_data(show_spinner="키워드 분석 데이터를 불러오는 중...")
+def load_base_docs_view(
+    data_dir: str,
+    candidate: str,
+    sources: tuple[str, ...],
+    start_date_key: str,
+    end_date_key: str,
+):
+    if not sources:
+        return pd.DataFrame()
+    available = set(available_table_columns(data_dir, "base_docs_light"))
+    filters: list[tuple] = []
+    add_filter(filters, available, "candidate", "==", candidate)
+    add_in_filter(filters, available, "source", sources)
+    add_filter(filters, available, "date", ">=", start_date_key)
+    add_filter(filters, available, "date", "<=", end_date_key)
+    df = read_table_subset(data_dir, "base_docs_light", BASE_VIEW_COLS, filters=filters)
+    return coerce_numeric(df, NUMERIC_COLS)
+
+
+@st.cache_data(show_spinner="근거 문서를 불러오는 중...")
+def load_evidence_filter_view(
+    data_dir: str,
+    candidate: str,
+    sources: tuple[str, ...],
+    start_date_key: str,
+    end_date_key: str,
+):
+    if not sources:
+        return pd.DataFrame()
+    available = set(available_table_columns(data_dir, "evidence_docs"))
+    filters: list[tuple] = []
+    add_filter(filters, available, "candidate", "==", candidate)
+    add_in_filter(filters, available, "source", sources)
+    add_filter(filters, available, "date", ">=", start_date_key)
+    add_filter(filters, available, "date", "<=", end_date_key)
+    df = read_table_subset(data_dir, "evidence_docs", EVIDENCE_VIEW_COLS, filters=filters)
+    return coerce_numeric(df, NUMERIC_COLS)
+
+
+@st.cache_data(show_spinner="선택 이슈의 근거 문서를 불러오는 중...")
+def load_evidence_for_issue_view(
+    data_dir: str,
+    candidate: str,
+    sources: tuple[str, ...],
+    start_date_key: str,
+    end_date_key: str,
+    keyword: str,
+    period_issue_id: str,
+    stable_issue_id: str,
+):
+    if not period_issue_id and not stable_issue_id:
+        return pd.DataFrame()
+    available = set(available_table_columns(data_dir, "evidence_docs"))
+
+    def _read_with_id(id_column: str, id_value: str) -> pd.DataFrame:
+        filters: list[tuple] = []
+        add_filter(filters, available, "candidate", "==", candidate)
+        add_in_filter(filters, available, "source", sources)
+        add_filter(filters, available, "date", ">=", start_date_key)
+        add_filter(filters, available, "date", "<=", end_date_key)
+        add_filter(filters, available, id_column, "==", id_value)
+        return read_table_subset(data_dir, "evidence_docs", EVIDENCE_VIEW_COLS, filters=filters)
+
+    if period_issue_id:
+        exact = _read_with_id("period_issue_id", period_issue_id)
+        exact = filter_evidence(exact, candidate, sources, start_date_key, end_date_key, keyword=keyword, period_issue_id=period_issue_id, limit=300)
+        if not exact.empty or not stable_issue_id:
+            return coerce_numeric(exact, NUMERIC_COLS)
+
+    fallback = _read_with_id("stable_issue_id", stable_issue_id)
+    fallback = filter_evidence(fallback, candidate, sources, start_date_key, end_date_key, keyword=keyword, stable_issue_id=stable_issue_id, limit=300)
+    return coerce_numeric(fallback, NUMERIC_COLS)
 
 
 @st.cache_data(show_spinner="댓글 분석 데이터를 불러오는 중...")
@@ -540,6 +728,10 @@ def main():
         st.stop()
     selected_sources = [reverse_lookup(SOURCE_LABELS, lab) for lab in selected_source_labels]
     selected_windows = [reverse_lookup(WINDOW_LABELS, lab) for lab in selected_window_labels]
+    source_key = tuple(selected_sources)
+    window_key = tuple(selected_windows)
+    start_key = str(start_date)
+    end_key = str(end_date)
 
     sections = ["기간별 주요 이슈", "키워드 일별 추이", "플랫폼별 반응", "근거 문서", "원문·댓글 반응", "설명"]
     active_section = st.radio("탐색 섹션", sections, horizontal=True, label_visibility="collapsed")
@@ -548,11 +740,12 @@ def main():
         st.subheader("기간별 주요 이슈")
         st.caption("선택한 후보·기간·자료원 조건에 맞는 주요 이슈를 표로 먼저 보고, 하나를 골라 근거 문서까지 확인합니다.")
         if view_mode == "custom 기간 시계열 집계":
-            timeseries = load_dashboard_table(str(DATA_DIR), "issue_timeseries")
+            timeseries = load_issue_timeseries_view(str(DATA_DIR), candidate, source_key, start_key, end_key)
             st.info("선택 기간 요약은 사전에 산출된 이슈 시계열을 선택 기간 기준으로 합산한 탐색 결과입니다.")
             top = query_custom_period_top10_from_timeseries(timeseries, candidate, selected_sources, start_date, end_date, keyword=keyword, top_n=top_n * 3)
         else:
-            top = query_existing_window_top10(briefs, candidate, selected_sources, start_date, end_date, selected_windows, keyword=keyword, max_rows=top_n * 3)
+            briefs_view = load_issue_briefs_view(str(DATA_DIR), candidate, source_key, window_key, start_key, end_key, keyword)
+            top = query_existing_window_top10(briefs_view, candidate, selected_sources, start_date, end_date, selected_windows, keyword=keyword, max_rows=top_n * 3)
         if top.empty:
             st.info("조건에 맞는 이슈가 없습니다.")
         else:
@@ -574,20 +767,19 @@ def main():
             st.divider()
             issue_card(selected_row, int(selected_row["display_rank"]))
 
-            evidence = load_dashboard_table(str(DATA_DIR), "evidence_docs")
-            if evidence.empty:
+            selected_evidence = load_evidence_for_issue_view(
+                str(DATA_DIR),
+                candidate,
+                source_key,
+                start_key,
+                end_key,
+                keyword,
+                display_text(selected_row.get("period_issue_id", "")),
+                display_text(selected_row.get("stable_issue_id", "")),
+            )
+            if selected_evidence.empty:
                 st.warning("근거 문서 데이터가 준비되지 않아 선택 이슈의 근거 문서를 표시할 수 없습니다.")
             else:
-                selected_evidence = evidence_for_issue(
-                    evidence,
-                    selected_row,
-                    candidate,
-                    selected_sources,
-                    start_date,
-                    end_date,
-                    keyword=keyword,
-                    limit=300,
-                )
                 render_issue_evidence(selected_evidence)
 
     elif active_section == sections[1]:
@@ -596,7 +788,7 @@ def main():
         if not keyword.strip():
             st.info("키워드를 입력하세요. 예: 칸쿤, 여론조사, 서소문, GTX")
         else:
-            base = load_dashboard_table(str(DATA_DIR), "base_docs_light")
+            base = load_base_docs_view(str(DATA_DIR), candidate, source_key, start_key, end_key)
             if base.empty:
                 st.warning("키워드 추이 분석용 원문 데이터가 준비되지 않았습니다.")
                 st.stop()
@@ -618,7 +810,7 @@ def main():
         if not keyword.strip():
             st.info("키워드를 입력하세요.")
         else:
-            base = load_dashboard_table(str(DATA_DIR), "base_docs_light")
+            base = load_base_docs_view(str(DATA_DIR), candidate, source_key, start_key, end_key)
             if base.empty:
                 st.warning("base_docs_light 데이터가 없습니다.")
                 st.stop()
@@ -637,7 +829,7 @@ def main():
     elif active_section == sections[3]:
         st.subheader("근거 문서")
         st.caption("현재 조회 조건 또는 키워드와 연결된 대표 기사·영상·게시글을 확인합니다.")
-        evidence = load_dashboard_table(str(DATA_DIR), "evidence_docs")
+        evidence = load_evidence_filter_view(str(DATA_DIR), candidate, source_key, start_key, end_key)
         if evidence.empty:
             st.warning("근거 문서 데이터가 준비되지 않았습니다.")
         else:
@@ -654,8 +846,9 @@ def main():
                         st.dataframe(display_table(reaction_docs, "reaction_docs"), width="stretch", height=360, hide_index=True)
     elif active_section == sections[4]:
         comments, doc_comments, issue_comment_map, _comment_timeseries = load_dashboard_comment_data(str(DATA_DIR))
+        comment_briefs = load_issue_briefs_view(str(DATA_DIR), candidate, source_key, window_key, start_key, end_key, keyword)
         render_comment_drilldown(
-            briefs,
+            comment_briefs,
             comments,
             doc_comments,
             issue_comment_map,
