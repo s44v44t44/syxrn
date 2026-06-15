@@ -82,6 +82,13 @@ def options_with_labels(values: list[str], labels: dict[str, str]) -> list[tuple
     return out
 
 
+def option_index(options: list[tuple[str, str]], target: str, default: int = 0) -> int:
+    for idx, (_, value) in enumerate(options):
+        if value == target:
+            return idx
+    return default
+
+
 def apply_spike_level(df: pd.DataFrame, level: str) -> pd.DataFrame:
     if df.empty:
         return df
@@ -271,7 +278,7 @@ with st.container(border=True):
     source_label = r1c3.selectbox("자료원", [label for label, _ in source_options], index=0)
     source = dict(source_options)[source_label]
     group_options = options_with_labels(group_values, GROUP_SCOPE_LABELS)
-    group_label = r1c4.selectbox("검정 범위", [label for label, _ in group_options], index=0)
+    group_label = r1c4.selectbox("검정 범위", [label for label, _ in group_options], index=option_index(group_options, "candidate_window_type"))
     group_scope = dict(group_options)[group_label]
 
     r2c1, r2c2, r2c3, r2c4 = st.columns([1, 1, 1, 1])
@@ -280,7 +287,7 @@ with st.container(border=True):
     window_type = dict(window_options)[window_label]
     start = r2c2.date_input("분석 시작일", min_date, min_value=min_date, max_value=max_date)
     end = r2c3.date_input("분석 종료일", max_date, min_value=min_date, max_value=max_date)
-    spike_label = r2c4.selectbox("급등 표시", list(SPIKE_FILTERS.values()), index=2)
+    spike_label = r2c4.selectbox("급등 표시", list(SPIKE_FILTERS.values()), index=list(SPIKE_FILTERS).index("spike"))
     spike_level = {v: k for k, v in SPIKE_FILTERS.items()}[spike_label]
     if start > end:
         st.error("시작일이 종료일보다 늦습니다.")
@@ -336,6 +343,18 @@ k2.metric("비교 항목 수", f"{len(fr):,}")
 k3.metric("연관강도 범위", v_range_label(ft))
 k4.metric("선택 기준 키워드 급등일", f"{selected_spike_count(fk):,}")
 k5.metric("선택 기준 이슈 급등일", f"{selected_spike_count(fi):,}")
+
+with st.expander("데이터 포함 현황", expanded=False):
+    st.markdown(
+        f"""
+- 분포 검정 산출물: 검정 {len(tests):,}개, 세부 비교 항목 {len(residuals):,}개
+- 급등 탐지 산출물: 키워드 일별 신호 {len(keyword_spikes):,}행, 이슈 일별 신호 {len(issue_spikes):,}행
+- 포함 후보: {", ".join(sorted([x for x in candidate_values if x != "ALL"]))}
+- 포함 자료원: {", ".join([SOURCE_LABELS_WITH_ALL.get(x, x) for x in source_values if x != "ALL"])}
+
+월간 Top10은 현재 `전체 자료원 결합` 기준으로 생성되어 있습니다. 이 화면의 자료원별 분포 검정은 자료원 간 차이를 보는 검정이라, 최소 2개 이상의 개별 자료원이 필요합니다. 따라서 월간 통합자료원 행은 원자료가 빠진 것이 아니라 검정 조건상 제외됩니다.
+        """
+    )
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["자료원별 분포 차이", "분포 차이 세부 항목", "키워드 급등", "이슈 급등", "방법 및 한계"])
 
