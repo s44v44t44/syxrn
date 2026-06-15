@@ -374,12 +374,16 @@ WEAK_NAME_TERMS = {
     "정책", "vs", "대통령", "시장", "시정", "시민", "이재명", "함께", "공약", "정부", "대표",
     "게시글", "댓글", "목록", "삭제", "수정", "스팸처리", "공유하기", "북마크", "이전글", "더보기",
     "daum", "가입하기", "계정", "카카오", "로그인", "re", "저장", "됩니다", "주세요", "필독",
-    "내용", "방송", "모음", "제목", "신문기사", "정원", "감사",
+    "내용", "방송", "모음", "제목", "신문기사", "정원", "감사", "정원오", "오세훈",
+    "성동구청장", "서울시장",
 }
 STRONG_NAME_TERMS = {
     "여론조사", "본선", "판세", "TV토론", "토론", "공방", "GTX", "삼성역", "철근", "누락",
     "서소문", "고가", "사고", "안전", "칸쿤", "출장", "의혹", "선거법", "고발", "장특공",
     "세금", "경선", "확정", "사전투표", "투표", "박원순", "노무현", "부동산",
+}
+PERSON_POSITION_TERMS = {
+    "정원오", "오세훈", "성동구청장", "서울시장", "시장", "구청장", "후보", "전", "현",
 }
 
 
@@ -396,6 +400,25 @@ def split_terms(value) -> list[str]:
         return []
     parts = re.split(r"\s*(?:\||·|,|/|;|\n)\s*", text)
     return [p.strip() for p in parts if p and p.strip()]
+
+
+def normalized_issue_terms(value, limit: int = 4) -> list[str]:
+    terms: list[str] = []
+    seen: set[str] = set()
+    for term in split_terms(display_text(value).replace("_", " ")):
+        cleaned = re.sub(r"\s+", " ", term).strip(" -_·:;,.")
+        if not cleaned:
+            continue
+        lowered = cleaned.lower()
+        if lowered in WEAK_NAME_TERMS or len(cleaned) <= 1:
+            continue
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        terms.append(cleaned)
+        if len(terms) >= limit:
+            break
+    return terms
 
 
 def first_evidence_title(row: pd.Series) -> str:
@@ -420,6 +443,14 @@ def weak_issue_name(value) -> bool:
     name = display_text(value)
     if not name:
         return True
+    name = re.sub(r"\s+", " ", name).strip()
+    if name in {"정원오", "오세훈", "JWO", "OSH"}:
+        return True
+    if len(name) <= 3 and not any(term in name for term in STRONG_NAME_TERMS):
+        return True
+    words = [w for w in re.split(r"\s+", name.replace("·", " ")) if w]
+    if words and all(w in PERSON_POSITION_TERMS for w in words):
+        return True
     tokens = split_terms(name)
     if not tokens:
         return True
@@ -432,17 +463,57 @@ def weak_issue_name(value) -> bool:
     return generic_hits >= max(1, len(tokens) - 1)
 
 
+def unbalanced_quote(value) -> bool:
+    text = display_text(value)
+    return text.count("“") != text.count("”") or text.count('"') % 2 == 1
+
+
+def fragment_issue_name(value) -> bool:
+    text = display_text(value).strip()
+    if not text:
+        return True
+    return unbalanced_quote(text) or text.endswith(("“", '"', "…"))
+
+
+def weak_display_summary(value) -> bool:
+    text = re.sub(r"\s+", " ", display_text(value)).strip()
+    if not text or fragment_issue_name(text) or weak_summary(text):
+        return True
+    if text.startswith("대표 근거:"):
+        evidence = text.split(":", 1)[1].strip()
+        return len(evidence) < 8 or weak_issue_name(evidence) or fragment_issue_name(evidence)
+    return False
+
+
+def safe_issue_name_candidate(value) -> str:
+    text = re.sub(r"\s+", " ", display_text(value)).strip()
+    if not text:
+        return ""
+    if "_" in text:
+        terms = normalized_issue_terms(text, limit=4)
+        candidate = "·".join(terms)
+        if candidate and any(term in candidate for term in STRONG_NAME_TERMS):
+            return candidate
+        return ""
+    return text
+
+
+def generic_issue_summary(name: str) -> str:
+    clean = display_text(name)
+    if not clean or weak_issue_name(clean) or fragment_issue_name(clean):
+        return ""
+    return f"{clean}에 관한 주요 보도·게시글 묶음이다."
+
+
 def issue_display_name(row: pd.Series) -> str:
-    raw = display_text(row.get("issue_display_name", ""))
-    if raw:
-        return raw
-    name = display_text(row.get("issue_name", "")) or display_text(row.get("issue_label_auto", ""))
-    if name and not weak_issue_name(name):
-        return name
+    for col in ["issue_display_name", "issue_name", "issue_label_auto"]:
+        name = safe_issue_name_candidate(row.get(col, ""))
+        if name and not weak_issue_name(name) and not fragment_issue_name(name):
+            return name
     title = first_evidence_title(row)
     if title:
         return shorten_text(title, 54)
-    terms = [t for t in split_terms(row.get("top_terms", "")) if t.lower() not in WEAK_NAME_TERMS][:4]
+    terms = normalized_issue_terms(row.get("top_terms", ""), limit=4)
     if terms:
         return "·".join(terms)
     return display_text(row.get("stable_issue_id", "")) or "이름 없는 이슈"
@@ -450,15 +521,18 @@ def issue_display_name(row: pd.Series) -> str:
 
 def issue_display_summary(row: pd.Series) -> str:
     raw = display_text(row.get("summary_display", ""))
-    if raw:
-        return raw
     summary = display_text(row.get("summary_1line", ""))
     title = first_evidence_title(row)
-    terms = [t for t in split_terms(row.get("top_terms", "")) if t.lower() not in WEAK_NAME_TERMS][:5]
-    if title and (weak_summary(summary) or weak_issue_name(row.get("issue_name", ""))):
-        return f"대표 근거: {shorten_text(title, 92)}"
+    terms = normalized_issue_terms(row.get("top_terms", ""), limit=5)
     if summary and not weak_summary(summary):
         return summary
+    inferred = generic_issue_summary(issue_display_name(row))
+    if inferred and (weak_display_summary(raw) or raw.startswith("대표 근거:")):
+        return inferred
+    if raw and not weak_display_summary(raw):
+        return raw
+    if title and (weak_summary(summary) or weak_issue_name(row.get("issue_name", ""))):
+        return f"대표 근거: {shorten_text(title, 92)}"
     if terms:
         return f"핵심어: {' · '.join(terms)}"
     if title:
@@ -569,7 +643,16 @@ def render_comment_drilldown(
         st.warning("댓글 분석용 데이터가 준비되지 않아 이 탭을 표시할 수 없습니다.")
         return
 
-    comment_issue_sources = selected_sources
+    available_comment_sources = sorted(
+        set(doc_comments.get("source", pd.Series([], dtype=str)).dropna().astype(str).unique().tolist())
+        | set(comments.get("source", pd.Series([], dtype=str)).dropna().astype(str).unique().tolist())
+    )
+    comment_sources = [s for s in selected_sources if s != "all_sources_combined" and s in available_comment_sources]
+    if "all_sources_combined" in selected_sources:
+        comment_sources.extend([s for s in available_comment_sources if s not in comment_sources])
+
+    comment_issue_sources = comment_sources
+    mapped_sources: set[str] = set()
     period_ids: set[str] = set()
     stable_ids: set[str] = set()
     if not issue_comment_map.empty:
@@ -578,12 +661,17 @@ def render_comment_drilldown(
             map_for_options = map_for_options[map_for_options["candidate"].astype(str).eq(candidate)]
         if "source" in map_for_options.columns:
             mapped_sources = set(map_for_options["source"].dropna().astype(str).unique().tolist())
-            comment_issue_sources = [s for s in selected_sources if s in mapped_sources]
+            comment_issue_sources = [s for s in comment_sources if s in mapped_sources]
             map_for_options = map_for_options[map_for_options["source"].astype(str).isin(comment_issue_sources)]
         if "period_issue_id" in map_for_options.columns:
             period_ids = set(map_for_options["period_issue_id"].dropna().astype(str).drop_duplicates().tolist())
         if "stable_issue_id" in map_for_options.columns:
             stable_ids = set(map_for_options["stable_issue_id"].dropna().astype(str).drop_duplicates().tolist())
+
+    if mapped_sources:
+        mapped_labels = ", ".join(label_source(s) for s in sorted(mapped_sources & set(comment_sources)))
+        if mapped_labels:
+            st.caption(f"특정 이슈를 골라 댓글까지 연결하는 기능은 현재 원문-댓글 매핑이 있는 자료원({mapped_labels})을 기준으로 제공합니다. 키워드/기간 조건 원문 찾기는 수집된 댓글 원문 전체를 대상으로 합니다.")
 
     issue_candidates = pd.DataFrame()
     if comment_issue_sources:
@@ -626,7 +714,7 @@ def render_comment_drilldown(
         doc_comments,
         issue_comment_map,
         candidate=candidate,
-        sources=selected_sources,
+        sources=comment_sources,
         start_date=start_date,
         end_date=end_date,
         keyword=keyword,
@@ -765,7 +853,7 @@ def main():
         r3c1, r3c2, r3c3 = st.columns([1.4, 0.8, 1.2])
         keyword = r3c1.text_input("키워드", value="", placeholder="예: 칸쿤, 여론조사, 서소문, GTX")
         top_n = r3c2.slider("표시할 이슈 수", 5, 30, 10)
-        view_mode_label = r3c3.radio("조회 방식", ["기간별 산출 결과 조회", "선택 기간 요약"], index=0)
+        view_mode_label = r3c3.radio("조회 방식", ["사전 산출 기간 보기", "선택 기간 합산 참고"], index=0)
         view_mode = "custom 기간 시계열 집계" if view_mode_label.startswith("선택") else "기존 window 결과"
 
     candidate = {v: k for k, v in CANDIDATE_LABELS.items()}.get(cand_label, cand_label)
@@ -787,10 +875,11 @@ def main():
         st.caption("선택한 후보·기간·자료원 조건에 맞는 주요 이슈를 표로 먼저 보고, 하나를 골라 근거 문서까지 확인합니다.")
         if view_mode == "custom 기간 시계열 집계":
             timeseries = load_issue_timeseries_view(str(DATA_DIR), candidate, source_key, start_key, end_key)
-            st.info("선택 기간 요약은 사전에 산출된 이슈 시계열을 선택 기간 기준으로 합산한 탐색 결과입니다.")
+            st.info("선택 기간 합산 참고는 일별 이슈 시계열을 현재 시작일~종료일 기준으로 합산한 탐색용 결과입니다. 긴 기간에서는 블로그·카페 잡음이 함께 올라올 수 있어 대표 Top10 판단은 사전 산출 기간 보기를 우선 권장합니다.")
             top = query_custom_period_top10_from_timeseries(timeseries, candidate, selected_sources, start_date, end_date, keyword=keyword, top_n=top_n * 3)
         else:
             briefs_view = load_issue_briefs_view(str(DATA_DIR), candidate, source_key, window_key, start_key, end_key, keyword)
+            st.info("사전 산출 기간 보기는 당일·최근 7일·최근 14일·주간·월간 등 미리 만들어 둔 기간 window 중 현재 조건과 겹치는 결과입니다. 제출·발표용 대표 이슈 확인에는 이 보기를 우선 사용하세요.")
             top = query_existing_window_top10(briefs_view, candidate, selected_sources, start_date, end_date, selected_windows, keyword=keyword, max_rows=top_n * 3)
         if top.empty:
             st.info("조건에 맞는 이슈가 없습니다.")
@@ -918,8 +1007,8 @@ def main():
 ### 해석 주의
 
 - 이 대시보드는 후보 관련 온라인 이슈의 **노출과 확산**을 탐색합니다.
-- `기간별 산출 결과 조회`는 사전에 산출된 기간별 주요 이슈를 보여줍니다.
-- `선택 기간 요약`은 기존 이슈 시계열을 선택 기간 기준으로 합산한 탐색 결과입니다.
+- `사전 산출 기간 보기`는 당일·최근 7일·최근 14일·주간·월간 등 사전에 산출된 기간 window 결과이며, 제출·발표용 대표 이슈 확인에 우선 권장됩니다.
+- `선택 기간 합산 참고`는 일별 이슈 시계열을 선택한 시작일~종료일 기준으로 합산한 탐색 결과입니다. 긴 기간에서는 자료원별 잡음도 함께 누적될 수 있습니다.
 - 댓글 원문은 원문 기사·영상·게시글과 함께 확인합니다. 공개/시연용 보기에서는 민감정보가 마스킹된 댓글을 기본 표시합니다.
 - 최종 보고서 문장에는 대표 근거 문서를 확인한 뒤 정리한 문장을 쓰는 것을 권장합니다.
 - 후보에 대한 긍정/부정 판단은 별도 감성·입장·프레임 분석 이후 가능합니다.
