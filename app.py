@@ -66,19 +66,15 @@ NUMERIC_COLS = [
 
 
 @st.cache_data(show_spinner="기본 분석 데이터를 불러오는 중...")
-def load_dashboard_core_data(data_dir: str):
+def load_dashboard_index_data(data_dir: str):
     meta = load_metadata(data_dir)
     briefs = load_table(data_dir, "issue_briefs")
-    timeseries = load_table(data_dir, "issue_timeseries")
-    evidence = load_table(data_dir, "evidence_docs")
-    base = load_table(data_dir, "base_docs_light")
-    return (
-        meta,
-        coerce_numeric(briefs, NUMERIC_COLS),
-        coerce_numeric(timeseries, NUMERIC_COLS),
-        coerce_numeric(evidence, NUMERIC_COLS),
-        coerce_numeric(base, NUMERIC_COLS),
-    )
+    return meta, coerce_numeric(briefs, NUMERIC_COLS)
+
+
+@st.cache_data(show_spinner="선택한 분석 데이터를 불러오는 중...")
+def load_dashboard_table(data_dir: str, stem: str):
+    return coerce_numeric(load_table(data_dir, stem), NUMERIC_COLS)
 
 
 @st.cache_data(show_spinner="댓글 분석 데이터를 불러오는 중...")
@@ -497,7 +493,7 @@ def main():
         st.error("대시보드 데이터 폴더를 찾지 못했습니다. 분석 산출물 위치를 확인해 주세요.")
         st.stop()
 
-    meta, briefs, timeseries, evidence, base = load_dashboard_core_data(str(DATA_DIR))
+    meta, briefs = load_dashboard_index_data(str(DATA_DIR))
     if briefs.empty:
         st.error("기간별 이슈 요약 데이터를 읽지 못했습니다. 분석 산출물 구성을 확인해 주세요.")
         st.stop()
@@ -545,12 +541,14 @@ def main():
     selected_sources = [reverse_lookup(SOURCE_LABELS, lab) for lab in selected_source_labels]
     selected_windows = [reverse_lookup(WINDOW_LABELS, lab) for lab in selected_window_labels]
 
-    tabs = st.tabs(["기간별 주요 이슈", "키워드 일별 추이", "플랫폼별 반응", "근거 문서", "원문·댓글 반응", "설명"])
+    sections = ["기간별 주요 이슈", "키워드 일별 추이", "플랫폼별 반응", "근거 문서", "원문·댓글 반응", "설명"]
+    active_section = st.radio("탐색 섹션", sections, horizontal=True, label_visibility="collapsed")
 
-    with tabs[0]:
+    if active_section == sections[0]:
         st.subheader("기간별 주요 이슈")
         st.caption("선택한 후보·기간·자료원 조건에 맞는 주요 이슈를 표로 먼저 보고, 하나를 골라 근거 문서까지 확인합니다.")
-        if view_mode == "custom 기간 시계열 집계" and not timeseries.empty:
+        if view_mode == "custom 기간 시계열 집계":
+            timeseries = load_dashboard_table(str(DATA_DIR), "issue_timeseries")
             st.info("선택 기간 요약은 사전에 산출된 이슈 시계열을 선택 기간 기준으로 합산한 탐색 결과입니다.")
             top = query_custom_period_top10_from_timeseries(timeseries, candidate, selected_sources, start_date, end_date, keyword=keyword, top_n=top_n * 3)
         else:
@@ -576,6 +574,7 @@ def main():
             st.divider()
             issue_card(selected_row, int(selected_row["display_rank"]))
 
+            evidence = load_dashboard_table(str(DATA_DIR), "evidence_docs")
             if evidence.empty:
                 st.warning("근거 문서 데이터가 준비되지 않아 선택 이슈의 근거 문서를 표시할 수 없습니다.")
             else:
@@ -591,14 +590,16 @@ def main():
                 )
                 render_issue_evidence(selected_evidence)
 
-    with tabs[1]:
+    elif active_section == sections[1]:
         st.subheader("키워드별 일별 이슈 수치")
         st.caption("선택한 키워드가 날짜별·자료원별로 얼마나 등장했는지 보여줍니다.")
         if not keyword.strip():
             st.info("키워드를 입력하세요. 예: 칸쿤, 여론조사, 서소문, GTX")
-        elif base.empty:
-            st.warning("키워드 추이 분석용 원문 데이터가 준비되지 않았습니다.")
         else:
+            base = load_dashboard_table(str(DATA_DIR), "base_docs_light")
+            if base.empty:
+                st.warning("키워드 추이 분석용 원문 데이터가 준비되지 않았습니다.")
+                st.stop()
             tl = keyword_daily_timeline(base, candidate, selected_sources, start_date, end_date, keyword)
             if tl.empty:
                 st.info("조건에 맞는 문서가 없습니다.")
@@ -611,14 +612,16 @@ def main():
                 st.plotly_chart(fig, width="stretch")
                 st.dataframe(display_table(tl, "timeline"), width="stretch", hide_index=True)
 
-    with tabs[2]:
+    elif active_section == sections[2]:
         st.subheader("키워드 플랫폼별 반응")
         st.caption("선택한 키워드가 어느 자료원에서 많이 나타났고, 댓글·조회수 반응이 어디서 컸는지 비교합니다.")
         if not keyword.strip():
             st.info("키워드를 입력하세요.")
-        elif base.empty:
-            st.warning("base_docs_light 데이터가 없습니다.")
         else:
+            base = load_dashboard_table(str(DATA_DIR), "base_docs_light")
+            if base.empty:
+                st.warning("base_docs_light 데이터가 없습니다.")
+                st.stop()
             pr = keyword_platform_reactions(base, candidate, selected_sources, start_date, end_date, keyword)
             if pr.empty:
                 st.info("조건에 맞는 문서가 없습니다.")
@@ -631,9 +634,10 @@ def main():
                 st.plotly_chart(fig, width="stretch")
                 st.dataframe(display_table(pr, "platform"), width="stretch", hide_index=True)
 
-    with tabs[3]:
+    elif active_section == sections[3]:
         st.subheader("근거 문서")
         st.caption("현재 조회 조건 또는 키워드와 연결된 대표 기사·영상·게시글을 확인합니다.")
+        evidence = load_dashboard_table(str(DATA_DIR), "evidence_docs")
         if evidence.empty:
             st.warning("근거 문서 데이터가 준비되지 않았습니다.")
         else:
@@ -648,7 +652,7 @@ def main():
                     with st.expander("댓글·조회 반응이 큰 문서 보기"):
                         st.caption("댓글 원문이 아니라, 수집된 댓글 수·조회수·좋아요 수가 큰 문서를 보여줍니다. 댓글 원문은 원문·댓글 반응 탭에서 확인할 수 있습니다.")
                         st.dataframe(display_table(reaction_docs, "reaction_docs"), width="stretch", height=360, hide_index=True)
-    with tabs[4]:
+    elif active_section == sections[4]:
         comments, doc_comments, issue_comment_map, _comment_timeseries = load_dashboard_comment_data(str(DATA_DIR))
         render_comment_drilldown(
             briefs,
@@ -663,7 +667,7 @@ def main():
             keyword,
         )
 
-    with tabs[5]:
+    elif active_section == sections[5]:
         st.subheader("분석 방법과 해석 기준")
         st.markdown(glossary_markdown())
         st.markdown(
