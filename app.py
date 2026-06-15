@@ -322,6 +322,16 @@ def source_display(x: str) -> str:
     return label_source(x)
 
 
+def reverse_lookup_available(mapping: dict[str, str], label: str, available_keys: list[str] | tuple[str, ...]) -> str:
+    """Resolve duplicated display labels using keys that actually exist in the loaded data."""
+    matches = [key for key, value in mapping.items() if value == label]
+    available = set(available_keys)
+    for key in matches:
+        if key in available:
+            return key
+    return matches[0] if matches else label
+
+
 def render_page_nav():
     nav1, nav2, nav3 = st.columns(3)
     nav1.page_link("app.py", label="이슈 레이더")
@@ -762,8 +772,8 @@ def main():
     if start_date > end_date:
         st.error("시작일이 종료일보다 늦습니다.")
         st.stop()
-    selected_sources = [reverse_lookup(SOURCE_LABELS, lab) for lab in selected_source_labels]
-    selected_windows = [reverse_lookup(WINDOW_LABELS, lab) for lab in selected_window_labels]
+    selected_sources = [reverse_lookup_available(SOURCE_LABELS, lab, source_values) for lab in selected_source_labels]
+    selected_windows = [reverse_lookup_available(WINDOW_LABELS, lab, window_values) for lab in selected_window_labels]
     source_key = tuple(selected_sources)
     window_key = tuple(selected_windows)
     start_key = str(start_date)
