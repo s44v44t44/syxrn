@@ -71,7 +71,7 @@ BRIEF_VIEW_COLS = [
     "rank_in_window", "issue_name", "issue_type", "summary_1line", "representative_title",
     "representative_url", "top_terms", "doc_count_raw", "doc_count_weighted", "comment_count",
     "view_count", "like_count", "rank_score", "cluster_coherence", "issue_display_name",
-    "summary_display", "issue_label_auto", "doc_count",
+    "summary_display", "issue_label_auto", "doc_count", "evidence_titles", "evidence_urls",
 ]
 TIMESERIES_VIEW_COLS = [
     "date", "candidate", "source", "stable_issue_id", "issue_name", "issue_display_name",
@@ -242,13 +242,23 @@ def load_evidence_for_issue_view(
     stable_issue_id: str,
     representative_url: str = "",
     representative_title: str = "",
+    evidence_urls: str = "",
+    evidence_titles: str = "",
     row_window_start: str = "",
     row_window_end: str = "",
 ):
-    if not period_issue_id and not stable_issue_id and not representative_url and not representative_title:
+    if not period_issue_id and not stable_issue_id and not representative_url and not representative_title and not evidence_urls and not evidence_titles:
         return pd.DataFrame()
     available = set(available_table_columns(data_dir, "evidence_docs"))
     evidence_sources = tuple(s for s in sources if s != "all_sources_combined")
+
+    def _split_evidence_values(value: str) -> list[str]:
+        values: list[str] = []
+        for part in re.split(r"\s*(?:\|\||\n)\s*", display_text(value)):
+            text = re.sub(r"\s+", " ", part).strip(" |")
+            if text and text not in values:
+                values.append(text)
+        return values
 
     def _read_with_id(id_column: str, id_value: str) -> pd.DataFrame:
         filters: list[tuple] = []
@@ -269,10 +279,18 @@ def load_evidence_for_issue_view(
         if df.empty:
             return df
         mask = pd.Series(False, index=df.index)
-        if representative_url and "url" in df.columns:
-            mask = mask | df["url"].fillna("").astype(str).eq(representative_url)
-        if representative_title and "title" in df.columns:
-            mask = mask | df["title"].fillna("").astype(str).eq(representative_title)
+        candidate_urls = _split_evidence_values(evidence_urls)
+        if representative_url:
+            candidate_urls.append(representative_url)
+        candidate_titles = _split_evidence_values(evidence_titles)
+        if representative_title:
+            candidate_titles.append(representative_title)
+        candidate_urls = list(dict.fromkeys(u for u in candidate_urls if u))
+        candidate_titles = list(dict.fromkeys(t for t in candidate_titles if t))
+        if candidate_urls and "url" in df.columns:
+            mask = mask | df["url"].fillna("").astype(str).isin(candidate_urls)
+        if candidate_titles and "title" in df.columns:
+            mask = mask | df["title"].fillna("").astype(str).isin(candidate_titles)
         out = df[mask].copy()
         if out.empty:
             return out
@@ -937,6 +955,8 @@ def main():
                 display_text(selected_row.get("stable_issue_id", "")),
                 display_text(selected_row.get("representative_url", "")),
                 display_text(selected_row.get("representative_title", "")),
+                display_text(selected_row.get("evidence_urls", "")),
+                display_text(selected_row.get("evidence_titles", "")),
                 display_text(selected_row.get("window_start", ""))[:10],
                 display_text(selected_row.get("window_end", ""))[:10],
             )
