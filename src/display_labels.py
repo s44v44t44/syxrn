@@ -164,7 +164,10 @@ def safe_text(value: object) -> str:
 
 
 def reverse_lookup(mapping: dict[str, str], label: str) -> str:
-    return {v: k for k, v in mapping.items()}.get(label, label)
+    for key, value in mapping.items():
+        if value == label:
+            return key
+    return label
 
 
 def label_from(mapping: dict[str, str], value: object) -> str:

@@ -240,29 +240,65 @@ def load_evidence_for_issue_view(
     keyword: str,
     period_issue_id: str,
     stable_issue_id: str,
+    representative_url: str = "",
+    representative_title: str = "",
+    row_window_start: str = "",
+    row_window_end: str = "",
 ):
-    if not period_issue_id and not stable_issue_id:
+    if not period_issue_id and not stable_issue_id and not representative_url and not representative_title:
         return pd.DataFrame()
     available = set(available_table_columns(data_dir, "evidence_docs"))
+    evidence_sources = tuple(s for s in sources if s != "all_sources_combined")
 
     def _read_with_id(id_column: str, id_value: str) -> pd.DataFrame:
         filters: list[tuple] = []
         add_filter(filters, available, "candidate", "==", candidate)
-        add_in_filter(filters, available, "source", sources)
+        add_in_filter(filters, available, "source", evidence_sources or sources)
         add_filter(filters, available, "date", ">=", start_date_key)
         add_filter(filters, available, "date", "<=", end_date_key)
         add_filter(filters, available, id_column, "==", id_value)
         return read_table_subset(data_dir, "evidence_docs", EVIDENCE_VIEW_COLS, filters=filters)
 
+    def _read_representative() -> pd.DataFrame:
+        filters: list[tuple] = []
+        add_filter(filters, available, "candidate", "==", candidate)
+        add_in_filter(filters, available, "source", evidence_sources)
+        add_filter(filters, available, "date", ">=", row_window_start or start_date_key)
+        add_filter(filters, available, "date", "<=", row_window_end or end_date_key)
+        df = read_table_subset(data_dir, "evidence_docs", EVIDENCE_VIEW_COLS, filters=filters)
+        if df.empty:
+            return df
+        mask = pd.Series(False, index=df.index)
+        if representative_url and "url" in df.columns:
+            mask = mask | df["url"].fillna("").astype(str).eq(representative_url)
+        if representative_title and "title" in df.columns:
+            mask = mask | df["title"].fillna("").astype(str).eq(representative_title)
+        out = df[mask].copy()
+        if out.empty:
+            return out
+        if "url" in out.columns:
+            out = out.drop_duplicates(["url", "title"] if "title" in out.columns else ["url"])
+        sort_cols = [c for c in ["comment_count", "view_count", "like_count", "count_for_ranking"] if c in out.columns]
+        if sort_cols:
+            for col in sort_cols:
+                out[col] = pd.to_numeric(out[col], errors="coerce").fillna(0)
+            out = out.sort_values(sort_cols, ascending=False)
+        return out.head(30)
+
     if period_issue_id:
         exact = _read_with_id("period_issue_id", period_issue_id)
         exact = filter_evidence(exact, candidate, sources, start_date_key, end_date_key, keyword=keyword, period_issue_id=period_issue_id, limit=300)
-        if not exact.empty or not stable_issue_id:
+        if not exact.empty:
             return coerce_numeric(exact, NUMERIC_COLS)
 
-    fallback = _read_with_id("stable_issue_id", stable_issue_id)
-    fallback = filter_evidence(fallback, candidate, sources, start_date_key, end_date_key, keyword=keyword, stable_issue_id=stable_issue_id, limit=300)
-    return coerce_numeric(fallback, NUMERIC_COLS)
+    if stable_issue_id:
+        fallback = _read_with_id("stable_issue_id", stable_issue_id)
+        fallback = filter_evidence(fallback, candidate, sources, start_date_key, end_date_key, keyword=keyword, stable_issue_id=stable_issue_id, limit=300)
+        if not fallback.empty:
+            return coerce_numeric(fallback, NUMERIC_COLS)
+
+    representative = _read_representative()
+    return coerce_numeric(representative, NUMERIC_COLS)
 
 
 @st.cache_data(show_spinner="댓글 분석 데이터를 불러오는 중...")
@@ -776,6 +812,10 @@ def main():
                 keyword,
                 display_text(selected_row.get("period_issue_id", "")),
                 display_text(selected_row.get("stable_issue_id", "")),
+                display_text(selected_row.get("representative_url", "")),
+                display_text(selected_row.get("representative_title", "")),
+                display_text(selected_row.get("window_start", ""))[:10],
+                display_text(selected_row.get("window_end", ""))[:10],
             )
             if selected_evidence.empty:
                 st.warning("근거 문서 데이터가 준비되지 않아 선택 이슈의 근거 문서를 표시할 수 없습니다.")
