@@ -1,0 +1,19 @@
+{
+  "module": "dashboard_stats",
+  "purpose": "Issue concentration/diversity and candidate issue-type share with bootstrap CI.",
+  "input_rows": 54702,
+  "weight_metric": "doc_count_weighted",
+  "filter_modes": [
+    "balanced",
+    "strict"
+  ],
+  "n_boot": 300,
+  "share_granularity": "window_type",
+  "min_issue_rows": 3,
+  "min_total_weight": 1.0,
+  "notes": [
+    "Bootstrap CI is based on resampling automatically extracted issue rows; it is not a survey sampling margin of error.",
+    "HHI/entropy are applied to issue shares, not market shares; interpretation should be 'issue concentration/diversity'.",
+    "Use filter_mode=strict for report-like rows and balanced/exploratory for diagnostics."
+  ]
+}

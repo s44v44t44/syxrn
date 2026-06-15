@@ -1,0 +1,9 @@
+﻿module,filter_mode,group_scope,distribution_unit,weight_metric,rows_test,rows_residuals,rows_observed,status,selected_series
+source_issue_type_test,balanced,candidate_window_type,stable_issue,row_count,8,864,864,ok,
+source_issue_type_test,balanced,candidate_overall,stable_issue,row_count,2,216,216,ok,
+source_issue_type_test,balanced,overall,stable_issue,row_count,1,108,108,ok,
+source_issue_type_test,strict,candidate_window_type,stable_issue,row_count,8,576,576,ok,
+source_issue_type_test,strict,candidate_overall,stable_issue,row_count,2,144,144,ok,
+source_issue_type_test,strict,overall,stable_issue,row_count,1,72,72,ok,
+keyword_spike_detection,NA,keyword_candidate_source,document_keyword_daily,count_for_ranking,32944,3601,17474,ok,
+issue_spike_detection,NA,stable_issue_candidate_source,stable_issue_daily,doc_count_weighted,27871,294,5555,ok,472.0

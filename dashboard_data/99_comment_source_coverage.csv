@@ -1,0 +1,5 @@
+﻿source,comment_rows,parent_key_nonempty_share,matched_comment_share,orphan_comment_share,first_comment_date,last_comment_date
+naver_article,618450,1.0,0.9041,0.0959,2026-05-01,2026-06-07
+youtube,379758,1.0,0.9865,0.0135,2026-01-01,2026-06-06
+daum_blog_cafe,1123,1.0,0.0,1.0,,
+naver_blog_cafe,896,1.0,0.0,1.0,,

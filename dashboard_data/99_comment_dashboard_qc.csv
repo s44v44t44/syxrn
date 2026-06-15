@@ -1,0 +1,11 @@
+﻿check,status,value,detail
+comment_files_discovered,ok,54,raw comment candidate files
+comments_light_nonempty,ok,1000227,normalized comments
+duplicate_comment_uid,ok,0,after de-duplication should be 0
+parent_doc_key_nonempty_share,ok,1.0,share of comments with parent_doc_key
+doc_parent_index_rows,ok,1001942,documents available for parent mapping
+issue_comment_map_rows,ok,6247435,comment-to-issue mappings via parent document
+matched_comment_share,ok,0.9336,unique comments mapped to issue via parent docs
+comment_timeseries_date_nonempty_share,ok,1.0,date must not be blank in comment_timeseries
+raw_author_not_exported,ok,True,only author_hash_public is exported
+source_coverage_summary_written,ok,True,99_comment_source_coverage.csv written

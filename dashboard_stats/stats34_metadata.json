@@ -1,0 +1,55 @@
+{
+  "module": "dashboard_stats_34",
+  "purpose": "Priority 3 source x issue_type distribution diagnostics and priority 4 keyword/stable-issue spike detection.",
+  "input_issue_rows": 54602,
+  "distribution_unit": "stable_issue",
+  "weight_metric": "row_count",
+  "filter_modes": [
+    "balanced",
+    "strict"
+  ],
+  "chisq_group_scopes": [
+    "candidate_window_type",
+    "candidate_overall",
+    "overall"
+  ],
+  "keywords": [
+    "칸쿤",
+    "여론조사",
+    "부동산",
+    "gtx",
+    "서소문",
+    "공약",
+    "고발",
+    "선거법",
+    "토론",
+    "서울교통공사",
+    "주택",
+    "재개발",
+    "교통",
+    "복지",
+    "경선",
+    "공천",
+    "출마",
+    "성동구",
+    "공급"
+  ],
+  "keyword_mode": "manual",
+  "spike_window": 14,
+  "spike_threshold": 2.5,
+  "strong_threshold": 4.0,
+  "min_baseline_days": 5,
+  "min_total_keyword_count": 20.0,
+  "issue_series_filters": {
+    "min_total_count": 5.0,
+    "min_active_days": 3,
+    "min_span_days": 6,
+    "max_series": 1000
+  },
+  "notes": [
+    "row_count is the main diagnostic for contingency-table style testing; doc_count_weighted should be treated as exposure-weighted descriptive analysis.",
+    "stable_issue is the default distribution unit to reduce repeated counting across overlapping dashboard windows.",
+    "Chi-square p-values are diagnostics on automatically classified issue records, not proof of causal difference.",
+    "Spike flags use previous rolling median/MAD and indicate unusual increases, not causal effects."
+  ]
+}

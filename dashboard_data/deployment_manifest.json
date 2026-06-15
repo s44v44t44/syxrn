@@ -1,0 +1,59 @@
+{
+  "profile": "streamlit_public_submission_lite",
+  "created_for": "JWO/OSH online issue radar dashboard QR deployment",
+  "privacy_note": "comments_light excludes comment_text_clean and keeps masked comments only; long raw text fields are excluded from public bundle.",
+  "tables": {
+    "99_comment_dashboard_qc.csv": {
+      "bytes": 759,
+      "mb": 0.001
+    },
+    "99_comment_source_coverage.csv": {
+      "bytes": 318,
+      "mb": 0.0
+    },
+    "99_dashboard_quality_review_qc.csv": {
+      "bytes": 294,
+      "mb": 0.0
+    },
+    "base_docs_light.parquet": {
+      "bytes": 7884332,
+      "mb": 7.519
+    },
+    "comment_file_inventory.csv": {
+      "bytes": 9992,
+      "mb": 0.01
+    },
+    "comment_timeseries.parquet": {
+      "bytes": 671912,
+      "mb": 0.641
+    },
+    "comments_light.parquet": {
+      "bytes": 9474796,
+      "mb": 9.036
+    },
+    "document_comment_summary.parquet": {
+      "bytes": 817809,
+      "mb": 0.78
+    },
+    "evidence_docs.parquet": {
+      "bytes": 18164446,
+      "mb": 17.323
+    },
+    "issue_briefs.parquet": {
+      "bytes": 20669511,
+      "mb": 19.712
+    },
+    "issue_comment_map.parquet": {
+      "bytes": 429423,
+      "mb": 0.41
+    },
+    "issue_timeseries.parquet": {
+      "bytes": 23245743,
+      "mb": 22.169
+    },
+    "metadata.json": {
+      "bytes": 11920,
+      "mb": 0.011
+    }
+  }
+}

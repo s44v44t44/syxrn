@@ -1,0 +1,157 @@
+{
+  "created_at": "2026-06-15T18:16:55",
+  "format_requested": "parquet",
+  "parquet_available": true,
+  "input_paths": {
+    "brief": "analysis_windowed_issues_v031_briefs_v312_fast\\09a_period_issue_top10_interpreted_briefs_v312.csv",
+    "timeseries": "analysis_windowed_issues_v031_postprocess\\06c_stable_issue_timeseries_reclassified_v31_safe.csv",
+    "evidence": "analysis_windowed_issues_v03_final\\04a_period_issue_document_map_by_window_v3.csv",
+    "base": "analysis_windowed_issues_v03_input\\00b_base_documents_deduped.csv"
+  },
+  "row_counts": {
+    "issue_briefs": 54702,
+    "issue_timeseries": 68047,
+    "evidence_docs": 827974,
+    "base_docs_light": 173968
+  },
+  "date_range": {
+    "issue_briefs_min_window_start": "2026-01-01",
+    "issue_briefs_max_window_end": "2026-05-31",
+    "base_min_date": "2026-01-01",
+    "base_max_date": "2026-05-31"
+  },
+  "candidate_labels": {
+    "JWO": "정원오",
+    "OSH": "오세훈"
+  },
+  "source_labels": {
+    "bigkinds_article": "BigKinds 기사",
+    "naver_article": "네이버 기사",
+    "daum_article": "다음 기사",
+    "youtube": "유튜브",
+    "naver_blog_cafe": "네이버 블로그·카페",
+    "daum_blog_cafe": "다음 블로그·카페",
+    "all_sources_combined": "전체 자료원 결합"
+  },
+  "written_files": {
+    "issue_briefs": [
+      "dashboard_data\\issue_briefs.parquet"
+    ],
+    "issue_timeseries": [
+      "dashboard_data\\issue_timeseries.parquet"
+    ],
+    "evidence_docs": [
+      "dashboard_data\\evidence_docs.parquet"
+    ],
+    "base_docs_light": [
+      "dashboard_data\\base_docs_light.parquet"
+    ]
+  },
+  "notes": [
+    "Full raw data should not be committed to a public GitHub repository.",
+    "Use weighted metrics for final issue timeseries interpretation.",
+    "Fast issue briefs with representative_fallback evidence are triage outputs, not final report prose."
+  ],
+  "comments_created_at": "2026-06-15T20:09:59",
+  "comment_input_files": [
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\daum_article\\runs\\20260501_20260531\\data_enriched\\comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\daum_blog_cafe\\runs\\20260501_20260531\\data_enriched\\nonnews_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\naver_article\\runs\\20260501_20260531\\data_enriched\\comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\naver_blog_cafe\\runs\\20260501_20260531\\data_enriched\\nonnews_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\combined_results\\youtube_comments.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260101_20260114\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260101_20260114\\data_enriched\\youtube_comment_master_before_date_enrich_20260506_001934.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260115_20260131\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260115_20260131\\data_enriched\\youtube_comment_master_before_date_enrich_20260506_002704.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260201_20260214\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260201_20260214\\data_enriched\\youtube_comment_master_before_date_enrich_20260506_005615.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260215_20260228\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260215_20260228\\data_enriched\\youtube_comment_master_before_date_enrich_20260506_010831.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260301_20260314\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260301_20260314\\data_enriched\\youtube_comment_master_before_date_enrich_20260506_011931.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260315_20260331\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260315_20260331\\data_enriched\\youtube_comment_master_before_date_enrich_20260506_015202.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260401_20260414\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260401_20260414\\data_enriched\\youtube_comment_master_before_date_enrich_20260506_023333.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260415_20260430\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260415_20260430\\data_enriched\\youtube_comment_master_before_date_enrich_20260506_030025.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260501_20260514\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260501_20260514\\data_enriched\\youtube_comment_master_before_date_enrich_20260606_010733.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260515_20260531\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260515_20260531\\data_enriched\\youtube_comment_master_before_date_enrich_20260606_022705.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\JWO\\youtube\\period_results\\20260515_20260531\\data_enriched\\youtube_comment_master_before_fast_rescue_20260606_023506.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\daum_article\\runs\\20260501_20260531\\data_enriched\\comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\daum_blog_cafe\\runs\\20260501_20260531\\data_enriched\\nonnews_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\naver_article\\runs\\20260501_20260531\\data_enriched\\comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\naver_blog_cafe\\runs\\20260501_20260531\\data_enriched\\nonnews_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\combined_results\\youtube_comments.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260101_20260114\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260101_20260114\\data_enriched\\youtube_comment_master_before_date_enrich_20260506_002503.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260115_20260131\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260115_20260131\\data_enriched\\youtube_comment_master_before_date_enrich_20260506_005011.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260201_20260214\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260201_20260214\\data_enriched\\youtube_comment_master_before_date_enrich_20260506_012500.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260215_20260228\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260215_20260228\\data_enriched\\youtube_comment_master_before_date_enrich_20260506_013846.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260301_20260314\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260301_20260314\\data_enriched\\youtube_comment_master_before_date_enrich_20260506_020706.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260315_20260331\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260315_20260331\\data_enriched\\youtube_comment_master_before_date_enrich_20260506_024036.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260401_20260414\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260401_20260414\\data_enriched\\youtube_comment_master_before_date_enrich_20260506_030625.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260415_20260430\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260415_20260430\\data_enriched\\youtube_comment_master_before_date_enrich_20260506_033352.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260501_20260514\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260501_20260514\\data_enriched\\youtube_comment_master_before_date_enrich_20260606_005542.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260515_20260531\\data_enriched\\youtube_comment_master.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260515_20260531\\data_enriched\\youtube_comment_master_before_date_enrich_20260606_020942.csv",
+    "JWO_OSH_Online_Issue_Analysis_2026\\OSH\\youtube\\period_results\\20260515_20260531\\data_enriched\\youtube_comment_master_before_fast_rescue_20260606_023836.csv"
+  ],
+  "comment_row_counts": {
+    "comments_light": 1000227,
+    "document_comment_summary": 16488,
+    "issue_comment_map": 6247435,
+    "comment_timeseries": 96023
+  },
+  "comment_notes": [
+    "Comments are displayed with parent articles/videos/posts to preserve context.",
+    "Collected comment count may differ from platform total comment count.",
+    "Only author_hash_public is exported; raw author identifiers are not included.",
+    "comment_text_masked is the default public display column."
+  ],
+  "quality_review": {
+    "applied_at": "2026-06-15T22:12:05",
+    "quality_brief_file": "analysis_windowed_issues_v031_briefs_v312_evidence_full\\09a_period_issue_top10_interpreted_briefs_v312.csv",
+    "backup_dir": "dashboard_data\\_backup_quality_20260615_221009",
+    "method": "full-period evidence-rich v31.2 issue briefs + dashboard display quality flags",
+    "row_counts": {
+      "issue_brief_rows": 54602,
+      "quality_brief_rows": 54602,
+      "matched_issue_brief_rows": 54602,
+      "issue_name_changed": 7236,
+      "issue_type_changed": 11218,
+      "summary_changed": 11233,
+      "docmap_evidence_rows": 54602,
+      "issue_timeseries_rows": 68047,
+      "stable_meta_rows": 31287,
+      "timeseries_rows_with_display_name": 68047
+    },
+    "notes": [
+      "Raw source data was not modified.",
+      "issue_briefs and issue_timeseries were updated for dashboard interpretation quality.",
+      "Custom-period top10 should group by stable_issue_id and use display metadata."
+    ]
+  },
+  "monthly_exact_issue_briefs": {
+    "applied_at": "2026-06-15T22:49:57",
+    "monthly_brief_file": "analysis_windowed_issues_v031_monthly_all_candidates_briefs_v312\\09a_period_issue_top10_interpreted_briefs_v312.csv",
+    "backup_dir": "dashboard_data\\_backup_monthly_exact_20260615_224953",
+    "before_issue_brief_rows": 54602,
+    "appended_rows": 100,
+    "final_issue_brief_rows": 54702,
+    "window_type": "calendar_month_exact",
+    "scope": "all_sources_combined"
+  }
+}
