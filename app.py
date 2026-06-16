@@ -41,6 +41,7 @@ from src.display_labels import (
 )
 
 DATA_DIR = Path("dashboard_data")
+DATA_SCHEMA_VERSION = "2026-06-16-evidence-bundle-v3"
 
 st.set_page_config(page_title="서울시장 후보 온라인 이슈 레이더", layout="wide", initial_sidebar_state="collapsed")
 st.markdown(
@@ -153,7 +154,9 @@ def load_issue_briefs_view(
     start_date_key: str,
     end_date_key: str,
     keyword: str,
+    cache_version: str,
 ):
+    _ = cache_version
     if not sources or not window_types:
         return pd.DataFrame()
     available = set(available_table_columns(data_dir, "issue_briefs"))
@@ -246,7 +249,9 @@ def load_evidence_for_issue_view(
     evidence_titles: str = "",
     row_window_start: str = "",
     row_window_end: str = "",
+    cache_version: str = "",
 ):
+    _ = cache_version
     if not period_issue_id and not stable_issue_id and not representative_url and not representative_title and not evidence_urls and not evidence_titles:
         return pd.DataFrame()
     available = set(available_table_columns(data_dir, "evidence_docs"))
@@ -920,7 +925,7 @@ def main():
             st.info("선택 기간 합산 참고는 일별 이슈 시계열을 현재 시작일~종료일 기준으로 합산한 탐색용 결과입니다. 긴 기간에서는 블로그·카페 잡음이 함께 올라올 수 있어 대표 Top10 판단은 사전 산출 기간 보기를 우선 권장합니다.")
             top = query_custom_period_top10_from_timeseries(timeseries, candidate, selected_sources, start_date, end_date, keyword=keyword, top_n=top_n * 3)
         else:
-            briefs_view = load_issue_briefs_view(str(DATA_DIR), candidate, source_key, window_key, start_key, end_key, keyword)
+            briefs_view = load_issue_briefs_view(str(DATA_DIR), candidate, source_key, window_key, start_key, end_key, keyword, DATA_SCHEMA_VERSION)
             st.info("사전 산출 기간 보기는 당일·최근 7일·최근 14일·주간·월간 등 미리 만들어 둔 기간 window 중 현재 조건과 겹치는 결과입니다. 제출·발표용 대표 이슈 확인에는 이 보기를 우선 사용하세요.")
             top = query_existing_window_top10(briefs_view, candidate, selected_sources, start_date, end_date, selected_windows, keyword=keyword, max_rows=top_n * 3)
         if top.empty:
@@ -959,6 +964,7 @@ def main():
                 display_text(selected_row.get("evidence_titles", "")),
                 display_text(selected_row.get("window_start", ""))[:10],
                 display_text(selected_row.get("window_end", ""))[:10],
+                DATA_SCHEMA_VERSION,
             )
             if selected_evidence.empty:
                 st.warning("근거 문서 데이터가 준비되지 않아 선택 이슈의 근거 문서를 표시할 수 없습니다.")
@@ -1029,7 +1035,7 @@ def main():
                         st.dataframe(display_table(reaction_docs, "reaction_docs"), width="stretch", height=360, hide_index=True)
     elif active_section == sections[4]:
         comments, doc_comments, issue_comment_map, _comment_timeseries = load_dashboard_comment_data(str(DATA_DIR))
-        comment_briefs = load_issue_briefs_view(str(DATA_DIR), candidate, source_key, window_key, start_key, end_key, keyword)
+        comment_briefs = load_issue_briefs_view(str(DATA_DIR), candidate, source_key, window_key, start_key, end_key, keyword, DATA_SCHEMA_VERSION)
         render_comment_drilldown(
             comment_briefs,
             comments,
