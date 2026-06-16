@@ -922,11 +922,9 @@ def main():
         st.caption("선택한 후보·기간·자료원 조건에 맞는 주요 이슈를 표로 먼저 보고, 하나를 골라 근거 문서까지 확인합니다.")
         if view_mode == "custom 기간 시계열 집계":
             timeseries = load_issue_timeseries_view(str(DATA_DIR), candidate, source_key, start_key, end_key)
-            st.info("선택 기간 합산 참고는 일별 이슈 시계열을 현재 시작일~종료일 기준으로 합산한 탐색용 결과입니다. 긴 기간에서는 블로그·카페 잡음이 함께 올라올 수 있어 대표 Top10 판단은 사전 산출 기간 보기를 우선 권장합니다.")
             top = query_custom_period_top10_from_timeseries(timeseries, candidate, selected_sources, start_date, end_date, keyword=keyword, top_n=top_n * 3)
         else:
             briefs_view = load_issue_briefs_view(str(DATA_DIR), candidate, source_key, window_key, start_key, end_key, keyword, DATA_SCHEMA_VERSION)
-            st.info("사전 산출 기간 보기는 당일·최근 7일·최근 14일·주간·월간 등 미리 만들어 둔 기간 window 중 현재 조건과 겹치는 결과입니다. 제출·발표용 대표 이슈 확인에는 이 보기를 우선 사용하세요.")
             top = query_existing_window_top10(briefs_view, candidate, selected_sources, start_date, end_date, selected_windows, keyword=keyword, max_rows=top_n * 3)
         if top.empty:
             st.info("조건에 맞는 이슈가 없습니다.")
